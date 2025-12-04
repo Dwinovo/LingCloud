@@ -15,6 +15,7 @@ public class File {
     private String hashPlain;
     private Long size;
     private String ossUrl;
+    private String userId;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

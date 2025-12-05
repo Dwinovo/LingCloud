@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dwinovo.ling_cloud.mapper.LogMapper">
+
+    <insert id="insert" parameterType="com.dwinovo.ling_cloud.pojo.LogEntry">
+        INSERT INTO logs (user_id, username, action, status, ip_address, created_at)
+        VALUES (#{userId}, #{username}, #{action}, #{status}, #{ipAddress}, #{createdAt})
+    </insert>
+
+    <select id="listRecent" resultType="com.dwinovo.ling_cloud.pojo.LogEntry">
+        SELECT id, user_id, username, action, status, ip_address, created_at
+        FROM logs
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

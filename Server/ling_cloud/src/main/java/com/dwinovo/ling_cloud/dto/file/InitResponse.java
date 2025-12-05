@@ -11,9 +11,15 @@ import lombok.NoArgsConstructor;
 public class InitResponse {
     private int status;
     private String message;
+    private String iv;
 
     public InitResponse(PowStatus status) {
+        this(status, null);
+    }
+
+    public InitResponse(PowStatus status, String iv) {
         this.status = status.getCode();
         this.message = status.getMessage();
+        this.iv = iv;
     }
 }

@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class FileDownloadInfo {
+public class FileDownloadResponse {
     private String iv;
     private String tag;
     private String url;

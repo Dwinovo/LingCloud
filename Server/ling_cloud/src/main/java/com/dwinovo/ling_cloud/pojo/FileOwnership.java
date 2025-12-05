@@ -12,7 +12,9 @@ import java.time.LocalDateTime;
 public class FileOwnership {
 
     private String id;
-    private byte[] H;
+    private String fileId;
+    private String filesHash;
     private String userId;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

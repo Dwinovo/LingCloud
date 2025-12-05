@@ -5,36 +5,38 @@
     <!-- 结果映射 -->
     <resultMap id="FileOwnershipResultMap" type="com.dwinovo.ling_cloud.pojo.FileOwnership">
         <id column="id" property="id"/>
-        <result column="H" property="H"/>
+        <result column="file_id" property="fileId"/>
+        <result column="files_hash" property="filesHash"/>
         <result column="user_id" property="userId"/>
         <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
     </resultMap>
-
-    <!-- 根据文件哈希查找所有拥有者 -->
-    <select id="findByFileHash" resultMap="FileOwnershipResultMap">
-        SELECT id, H, user_id, created_at
-        FROM file_ownership
-        WHERE H = #{hash}
-    </select>
 
     <!-- 检查用户是否拥有指定文件 -->
     <select id="findByUserAndFile" resultMap="FileOwnershipResultMap">
-        SELECT id, H, user_id, created_at
-        FROM file_ownership
-        WHERE user_id = #{userId} AND H = #{hash}
+        SELECT id, file_id, files_hash, user_id, created_at, updated_at
+        FROM files_owner
+        WHERE user_id = #{userId} AND file_id = #{fileId}
         LIMIT 1
     </select>
 
     <!-- 添加文件拥有关系 -->
     <insert id="insert" parameterType="com.dwinovo.ling_cloud.pojo.FileOwnership">
-        INSERT INTO file_ownership (id, H, user_id, created_at)
-        VALUES (#{id}, #{H}, #{userId}, #{createdAt})
+        INSERT INTO files_owner (id, file_id, files_hash, user_id, created_at, updated_at)
+        VALUES (#{id}, #{fileId}, #{filesHash}, #{userId}, #{createdAt}, #{updatedAt})
     </insert>
 
-    <!-- 删除文件拥有关系 -->
-    <delete id="delete">
-        DELETE FROM file_ownership
-        WHERE id = #{id}
+    <!-- 删除指定用户的文件拥有关系 -->
+    <delete id="deleteByUserAndFile">
+        DELETE FROM files_owner
+        WHERE user_id = #{userId} AND file_id = #{fileId}
     </delete>
+
+    <!-- 统计文件拥有者数量 -->
+    <select id="countByFileId" resultType="int">
+        SELECT COUNT(1)
+        FROM files_owner
+        WHERE file_id = #{fileId}
+    </select>
 
 </mapper>

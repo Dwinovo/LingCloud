@@ -1,6 +1,6 @@
 package com.dwinovo.ling_cloud.service;
 
-import com.dwinovo.ling_cloud.dto.file.FileDownloadInfo;
+import com.dwinovo.ling_cloud.dto.file.FileDownloadResponse;
 import com.dwinovo.ling_cloud.dto.file.InitResponse;
 import com.dwinovo.ling_cloud.pojo.File;
 import java.util.List;
@@ -21,6 +21,8 @@ public interface FileService {
 
    List<File> listUserFiles(String userId);
 
-   FileDownloadInfo getFileDownloadInfo(String userId, String fileId);
+   FileDownloadResponse getFileDownloadInfo(String userId, String fileId);
+
+   void deleteFile(String userId, String fileId);
 
 }

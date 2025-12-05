@@ -34,9 +34,25 @@ export interface ApiResponse<T = any> {
 }
 
 export interface InitUploadResponse {
-  status: string
+  status: number
   message: string
+  iv?: string | null
 }
+
+export interface UserFileInfo {
+  id: string
+  fileHash: string
+  name: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface DownloadFileInfo {
+  iv: string
+  tag: string
+  url: string
+}
+
 
 export const authApi = {
   // 用户注册
@@ -57,6 +73,14 @@ export const fileApi = {
   init: (hash: string) =>
     api.post<ApiResponse<InitUploadResponse>>('/file/init', { h: hash }),
 
+  // 提交PoW请求（二进制）
+  submitPow: (formData: FormData) =>
+    api.post<ApiResponse<string>>('/file/pow', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }),
+
   // 文件上传
   upload: (formData: FormData) =>
     api.post<ApiResponse<void>>('/file/upload', formData, {
@@ -67,13 +91,15 @@ export const fileApi = {
 
   // 获取文件列表
   listFiles: () =>
-    api.get<ApiResponse<any>>('/file/list'),
+    api.get<ApiResponse<UserFileInfo[]>>('/file/list'),
 
   // 下载文件
   download: (fileId: string) =>
-    api.get(`/file/download/${fileId}`, {
-      responseType: 'blob'
-    })
+    api.get<ApiResponse<DownloadFileInfo>>(`/file/${encodeURIComponent(fileId)}`),
+
+  // 删除文件
+  delete: (fileId: string) =>
+    api.delete<ApiResponse<string>>(`/file/${encodeURIComponent(fileId)}`)
 }
 
 export default api

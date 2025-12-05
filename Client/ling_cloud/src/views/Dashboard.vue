@@ -32,10 +32,6 @@
           <span>我的文件</span>
         </div>
         <div class="menu-item">
-          <el-icon><Upload /></el-icon>
-          <span>上传记录</span>
-        </div>
-        <div class="menu-item">
           <el-icon><Share /></el-icon>
           <span>分享文件</span>
         </div>
@@ -152,6 +148,22 @@
       </div>
     </div>
   </div>
+
+  <el-dialog
+    v-model="powDialogVisible"
+    title="PoW 验证"
+    width="420px"
+    :close-on-click-modal="false"
+    @close="cancelPowUpload"
+  >
+    <div class="dialog-content">
+      <p class="pow-tip">{{ powDialogMessage }}</p>
+    </div>
+    <template #footer>
+      <el-button @click="cancelPowUpload">取消</el-button>
+      <el-button type="primary" @click="confirmPowUpload">继续上传</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -175,14 +187,24 @@ import {
   Download
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
-import { fileApi } from '../utils/api'
-import { convergentEncrypt, buildUploadMessage, calculateFileHash } from '../utils/crypto'
+import { fileApi, type InitUploadResponse, type UserFileInfo, type DownloadFileInfo } from '../utils/api'
+import { convergentEncrypt, buildUploadMessage, calculateFileHash, convergentDecrypt, downloadFile } from '../utils/crypto'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const uploadRef = ref<UploadInstance>()
 const uploading = ref(false)
+
+const powDialogVisible = ref(false)
+const powDialogMessage = ref('')
+const powDialogStatus = ref<number | null>(null)
+const powDialogIv = ref<string | null>(null)
+const pendingPowFile = ref<UploadUserFile | null>(null)
+const pendingPowHashBase64 = ref('')
+const pendingPowHashHex = ref('')
+const powPromiseResolve = ref<(() => void) | null>(null)
+const powPromiseReject = ref<((reason?: any) => void) | null>(null)
 const fileListLoading = ref(false)
 const uploadFiles = ref<UploadUserFile[]>([])
 
@@ -248,49 +270,12 @@ const handleUpload = async () => {
   uploading.value = true
 
   try {
-    const uploadPromises = uploadFiles.value.map(async (fileObj) => {
-      if (!fileObj.raw) return Promise.resolve()
-
-      ElMessage.info(`正在初始化 ${fileObj.name}...`)
-      const hashHex = await calculateFileHash(fileObj.raw)
-      const initResponse = await fileApi.init(hashHex)
-      const initData = initResponse.data.data
-
-      if (!initData) {
-        throw new Error('初始化响应异常')
+    for (const fileObj of uploadFiles.value) {
+      if (!fileObj.raw) {
+        continue
       }
-
-      if (initData.status === 'ALLOW') {
-        ElMessage.success(`${fileObj.name} 已存在，秒传成功`)
-        return fileObj.name
-      }
-
-      if (initData.status !== 'POW') {
-        ElMessage.warning(`${fileObj.name} 返回未知状态：${initData.status}，已跳过`)
-        return
-      }
-
-      // 需要进行实际上传
-      ElMessage.info(`正在加密 ${fileObj.name}...`)
-      const encryptedData = await convergentEncrypt(fileObj.raw, hashHex)
-
-      // 构建上传消息
-      const uploadMessage = buildUploadMessage(encryptedData)
-
-      // 创建FormData
-      const formData = new FormData()
-      formData.append('H', uploadMessage.H)              // 文件哈希
-      formData.append('IV', uploadMessage.IV)            // IV的base64编码
-      formData.append('TAG', uploadMessage.TAG)          // TAG的base64编码
-      formData.append('C', uploadMessage.C, fileObj.name) // 密文Blob
-      formData.append('L', uploadMessage.L.toString())   // 文件长度
-
-      // 上传文件
-      await fileApi.upload(formData)
-      return fileObj.name
-    })
-
-    await Promise.all(uploadPromises)
+      await processSingleFile(fileObj)
+    }
     ElMessage.success('所有文件上传成功！')
     clearUploadList()
     refreshFileList()
@@ -301,30 +286,208 @@ const handleUpload = async () => {
   }
 }
 
+const processSingleFile = async (fileObj: UploadUserFile) => {
+  ElMessage.info(`正在初始化 ${fileObj.name}...`)
+  const hashHex = await calculateFileHash(fileObj.raw!)
+  const hashBase64 = hexToBase64(hashHex)
+  const initResponse = await fileApi.init(hashBase64)
+  const initData = initResponse.data.data
+
+  if (!initData) {
+    throw new Error('初始化响应异常')
+  }
+
+  await handleInitResult(fileObj, { base64: hashBase64, hex: hashHex }, initData)
+}
+
+const handleInitResult = async (
+  fileObj: UploadUserFile,
+  hashInfo: { base64: string; hex: string },
+  initData: InitUploadResponse
+) => {
+  if (initData.status === 2) { // ALLOW
+    await ElMessageBox.alert(`${fileObj.name} 已存在，秒传成功`, '提示', { confirmButtonText: '知道了' })
+    return fileObj.name
+  }
+
+  if (initData.status === 0 || initData.status === 1) {
+    powDialogStatus.value = initData.status
+    powDialogMessage.value = initData.message
+    powDialogIv.value = initData.status === 0 ? initData.iv ?? null : null
+    pendingPowFile.value = fileObj
+    pendingPowHashBase64.value = hashInfo.base64
+    pendingPowHashHex.value = hashInfo.hex
+    console.log('[POW][Init]', {
+      file: fileObj.name,
+      status: initData.status,
+      message: initData.message,
+      hashBase64: hashInfo.base64.slice(0, 16) + '...',
+      ivProvided: !!powDialogIv.value
+    })
+    await new Promise<void>((resolve, reject) => {
+      powPromiseResolve.value = resolve
+      powPromiseReject.value = reject
+      powDialogVisible.value = true
+    })
+    return
+  }
+
+  ElMessage.warning(`${fileObj.name} 返回未知状态：${initData.status}，已跳过`)
+}
+
+const confirmPowUpload = async () => {
+  if (!pendingPowFile.value || !pendingPowFile.value.raw) {
+    powDialogVisible.value = false
+    powPromiseReject.value?.(new Error('缺少POW文件'))
+    powPromiseResolve.value = null
+    powPromiseReject.value = null
+    return
+  }
+
+  try {
+    ElMessage.info(`正在加密 ${pendingPowFile.value.name}...`)
+    const fixedIv = powDialogStatus.value === 0 ? powDialogIv.value : null
+    if (powDialogStatus.value === 0 && !fixedIv) {
+      throw new Error('后端未返回IV，无法验证POW')
+    }
+    const encryptedData = await convergentEncrypt(pendingPowFile.value.raw, pendingPowHashHex.value, fixedIv || undefined)
+    const uploadMessage = buildUploadMessage(encryptedData)
+    console.log('[POW][Encrypt]', {
+      file: pendingPowFile.value.name,
+      iv: uploadMessage.IV,
+      tag: uploadMessage.TAG,
+      hashPreview: uploadMessage.H.slice(0, 16) + '...',
+      cipherSize: uploadMessage.C.size
+    })
+
+    await submitPow(uploadMessage)
+    ElMessage.success(`${pendingPowFile.value.name} POW 提交成功`)
+    await refreshFileList()
+    powPromiseResolve.value?.()
+  } catch (error: any) {
+    powPromiseReject.value?.(error)
+    ElMessage.error('POW上传失败：' + (error.response?.data?.message || error.message))
+  } finally {
+    powDialogVisible.value = false
+    pendingPowFile.value = null
+    powDialogStatus.value = null
+    pendingPowHashBase64.value = ''
+    pendingPowHashHex.value = ''
+    powDialogIv.value = null
+    powPromiseResolve.value = null
+    powPromiseReject.value = null
+  }
+}
+
+const cancelPowUpload = () => {
+  powDialogVisible.value = false
+  powPromiseReject.value?.(new Error('用户取消POW'))
+  powPromiseResolve.value = null
+  powPromiseReject.value = null
+  pendingPowFile.value = null
+  pendingPowStatusReset()
+}
+
+const pendingPowStatusReset = () => {
+  powDialogStatus.value = null
+  powDialogIv.value = null
+  pendingPowHashBase64.value = ''
+  pendingPowHashHex.value = ''
+}
+
+const submitPow = async (uploadMessage: ReturnType<typeof buildUploadMessage>) => {
+  const payloadBlob = await buildPowPayload(uploadMessage, pendingPowHashBase64.value)
+  const payloadFile = new File([payloadBlob], `${pendingPowFile.value?.name || 'payload'}.bin`, {
+    type: 'application/octet-stream'
+  })
+  console.log('[POW][Payload]', {
+    file: payloadFile.name,
+    totalBytes: payloadBlob.size,
+    sections: {
+      iv: 12,
+      hash: 32,
+      tag: 16,
+      cipher: payloadBlob.size - 60
+    }
+  })
+  const formData = new FormData()
+  formData.append('payload', payloadFile)
+  formData.append('filename', pendingPowFile.value?.name || payloadFile.name)
+  await fileApi.submitPow(formData)
+}
+
+const buildPowPayload = async (uploadMessage: ReturnType<typeof buildUploadMessage>, hashBase64: string): Promise<Blob> => {
+  if (!hashBase64) {
+    throw new Error('缺少文件哈希，无法生成POW payload')
+  }
+  const ivBytes = base64ToUint8Array(uploadMessage.IV)
+  const hashBytes = base64ToUint8Array(hashBase64)
+  const tagBytes = base64ToUint8Array(uploadMessage.TAG)
+  const cipherBuffer = await uploadMessage.C.arrayBuffer()
+  const cipherBytes = new Uint8Array(cipherBuffer)
+
+  const totalLength = ivBytes.length + hashBytes.length + tagBytes.length + cipherBytes.length
+  const payload = new Uint8Array(totalLength)
+  payload.set(ivBytes, 0)
+  payload.set(hashBytes, ivBytes.length)
+  payload.set(tagBytes, ivBytes.length + hashBytes.length)
+  payload.set(cipherBytes, ivBytes.length + hashBytes.length + tagBytes.length)
+
+  return new Blob([payload], { type: 'application/octet-stream' })
+}
+
+const base64ToUint8Array = (base64: string): Uint8Array => {
+  const binaryString = atob(base64)
+  const len = binaryString.length
+  const bytes = new Uint8Array(len)
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i)
+  }
+  return bytes
+}
+
+const base64ToHex = (base64: string): string => {
+  const bytes = base64ToUint8Array(base64)
+  return Array.from(bytes)
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+const hexToBase64 = (hex: string): string => {
+  const bytes = hexToUint8Array(hex)
+  let binary = ''
+  bytes.forEach(byte => {
+    binary += String.fromCharCode(byte)
+  })
+  return btoa(binary)
+}
+
+const hexToUint8Array = (hex: string): Uint8Array => {
+  const cleanHex = hex.startsWith('0x') ? hex.slice(2) : hex
+  const bytes = new Uint8Array(cleanHex.length / 2)
+  for (let i = 0; i < cleanHex.length; i += 2) {
+    bytes[i / 2] = parseInt(cleanHex.substr(i, 2), 16)
+  }
+  return bytes
+}
+
 // 刷新文件列表
 const refreshFileList = async () => {
   fileListLoading.value = true
   try {
-    // 模拟文件列表数据，实际应该从API获取
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    fileList.value = [
-      {
-        id: '1',
-        name: '示例文档.pdf',
-        size: 1024 * 1024 * 2.5,
-        type: 'document',
-        uploadTime: new Date('2024-01-15 10:30:00'),
-        hashPlain: 'abc123...'
-      },
-      {
-        id: '2',
-        name: '风景图片.jpg',
-        size: 1024 * 512,
-        type: 'image',
-        uploadTime: new Date('2024-01-14 15:20:00'),
-        hashPlain: 'def456...'
+    const response = await fileApi.listFiles()
+    const files: UserFileInfo[] = response.data.data || []
+    fileList.value = files.map((item) => {
+      const uploadDate = item.updatedAt ? new Date(item.updatedAt) : item.createdAt ? new Date(item.createdAt) : new Date()
+      return {
+        id: item.id,
+        name: item.name || '未命名文件',
+        size: 0,
+        type: inferFileType(item.name || ''),
+        uploadTime: uploadDate,
+        hashPlain: base64ToHex(item.fileHash)
       }
-    ]
+    })
   } catch (error: any) {
     ElMessage.error('获取文件列表失败：' + (error.response?.data?.message || error.message))
   } finally {
@@ -335,20 +498,23 @@ const refreshFileList = async () => {
 // 下载文件
 const handleDownload = async (file: FileItem) => {
   try {
-    ElMessage.info(`正在下载 ${file.name}...`)
+    ElMessage.info(`正在准备下载：${file.name}`)
+    const response = await fileApi.download(file.id)
+    const meta: DownloadFileInfo | undefined = response.data.data
+    if (!meta) {
+      throw new Error('下载元数据为空')
+    }
 
-    // 实际应该调用下载API获取加密数据
-    // const response = await fileApi.download(file.id)
-    // const encryptedData = response.data
+    const encryptedResp = await fetch(meta.url)
+    if (!encryptedResp.ok) {
+      throw new Error(`下载密文失败(${encryptedResp.status})`)
+    }
+    const encryptedBlob = await encryptedResp.blob()
 
-    // 模拟下载过程
-    await new Promise(resolve => setTimeout(resolve, 2000))
-
-    // 解密文件（这里需要获取原始的hashPlain作为密钥）
-    // const decryptedBlob = await convergentDecrypt(encryptedData, file.hashPlain)
-    // downloadFile(decryptedBlob, file.name)
-
-    ElMessage.success(`${file.name} 下载完成`)
+    const decryptedBlob = await convergentDecrypt(file.hashPlain, meta.iv, meta.tag, encryptedBlob)
+    const filename = file.name || 'download.bin'
+    downloadFile(decryptedBlob, filename)
+    ElMessage.success(`${filename} 下载完成`)
   } catch (error: any) {
     ElMessage.error('下载失败：' + (error.response?.data?.message || error.message))
   }
@@ -362,8 +528,7 @@ const handleDelete = (file: FileItem) => {
     type: 'warning'
   }).then(async () => {
     try {
-      // 实际应该调用删除API
-      // await fileApi.delete(file.id)
+      await fileApi.delete(file.id)
       ElMessage.success('文件删除成功')
       refreshFileList()
     } catch (error: any) {
@@ -382,8 +547,18 @@ const formatFileSize = (bytes: number): string => {
 }
 
 // 格式化日期
-const formatDate = (date: Date): string => {
+const formatDate = (date: Date | string): string => {
   return new Date(date).toLocaleString('zh-CN')
+}
+
+const inferFileType = (filename: string): string => {
+  const ext = filename.split('.').pop()?.toLowerCase()
+  if (!ext) return 'document'
+  if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp'].includes(ext)) return 'image'
+  if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return 'video'
+  if (['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(ext)) return 'audio'
+  if (['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'md'].includes(ext)) return 'document'
+  return 'document'
 }
 
 // 组件挂载时初始化认证状态并刷新文件列表
@@ -588,6 +763,32 @@ onMounted(async () => {
   gap: 12px;
 }
 
+.primary-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 26px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 0.025em;
+  height: 52px;
+}
+
+.primary-upload-btn:hover {
+  background: linear-gradient(135deg, #0284c7, #0c4a6e);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(14, 165, 233, 0.4);
+}
+
+.primary-upload-btn:active {
+  transform: translateY(0);
+}
+
 .file-list {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
@@ -636,6 +837,26 @@ onMounted(async () => {
 :deep(.el-table td) {
   border-bottom: 1px solid #f1f5f9;
 }
+
+
+:deep(.el-dialog__body) {
+  color: #1e293b;
+  font-size: 15px;
+  padding-top: 0;
+  text-align: left;
+}
+
+.dialog-content {
+  text-align: left;
+  margin: 0;
+}
+
+.pow-tip {
+  margin: 8px 0 0;
+  line-height: 1.5;
+  color: #475569;
+}
+
 
 @media (max-width: 768px) {
   .sidebar {

@@ -7,7 +7,8 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum PowStatus {
     POW  (0,"需要进行POW校验"),
-    ALLOW(1,"允许秒传");
+    FIRST(1,"首次上传，需要POW校验"),
+    ALLOW(2,"允许秒传");
      
 
     private final int code;

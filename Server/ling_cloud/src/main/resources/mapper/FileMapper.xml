@@ -4,43 +4,62 @@
 
     <!-- 结果映射 -->
     <resultMap id="FileResultMap" type="com.dwinovo.ling_cloud.pojo.File">
-        <id column="H" property="H"/>
-        <result column="L" property="L"/>
-        <result column="IV" property="IV"/>
-        <result column="TAG" property="TAG"/>
-        <result column="C" property="C"/>
-        <result column="offset" property="offset"/>
-        <result column="size" property="size"/>
-        <result column="MAC" property="MAC"/>
+        <id column="id" property="id"/>
+        <result column="file_hash" property="fileHash"/>
+        <result column="iv" property="iv"/>
+        <result column="tag" property="tag"/>
+        <result column="file_url" property="fileUrl"/>
+        <result column="mac" property="mac"/>
+        <result column="name" property="name"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
 
     <!-- 根据文件哈希查找文件 -->
     <select id="findByHash" resultMap="FileResultMap">
-        SELECT H, L, IV, TAG, C, offset, size, MAC, created_at, updated_at
+        SELECT id, file_hash, iv, tag, file_url, mac, name, created_at, updated_at
         FROM files
-        WHERE H = #{hash}
+        WHERE file_hash = #{hash}
+    </select>
+
+    <!-- 根据文件ID查找文件 -->
+    <select id="findById" resultMap="FileResultMap">
+        SELECT id, file_hash, iv, tag, file_url, mac, name, created_at, updated_at
+        FROM files
+        WHERE id = #{id}
     </select>
 
     <!-- 插入新文件 -->
     <insert id="insert" parameterType="com.dwinovo.ling_cloud.pojo.File">
-        INSERT INTO files (H, L, IV, TAG, C, offset, size, MAC, created_at, updated_at)
-        VALUES (#{H}, #{L}, #{IV}, #{TAG}, #{C}, #{offset}, #{size}, #{MAC}, #{createdAt}, #{updatedAt})
+        INSERT INTO files (id, file_hash, iv, tag, file_url, mac, name, created_at, updated_at)
+        VALUES (#{id}, #{fileHash}, #{iv}, #{tag}, #{fileUrl}, #{mac}, #{name}, #{createdAt}, #{updatedAt})
     </insert>
 
     <!-- 更新文件信息 -->
     <update id="update" parameterType="com.dwinovo.ling_cloud.pojo.File">
         UPDATE files
-        SET L = #{L},
-            IV = #{IV},
-            TAG = #{TAG},
-            C = #{C},
-            offset = #{offset},
-            size = #{size},
-            MAC = #{MAC},
+        SET iv = #{iv},
+            tag = #{tag},
+            file_url = #{fileUrl},
+            mac = #{mac},
+            name = #{name},
             updated_at = #{updatedAt}
-        WHERE H = #{H}
+        WHERE id = #{id}
     </update>
+
+    <!-- 查询用户拥有的文件列表 -->
+    <select id="findByUserId" resultMap="FileResultMap">
+        SELECT f.id, f.file_hash, f.iv, f.tag, f.file_url, f.mac, f.name, f.created_at, f.updated_at
+        FROM files f
+        INNER JOIN files_owner o ON f.id = o.file_id
+        WHERE o.user_id = #{userId}
+        ORDER BY f.updated_at DESC
+    </select>
+
+    <!-- 删除文件 -->
+    <delete id="deleteById">
+        DELETE FROM files
+        WHERE id = #{id}
+    </delete>
 
 </mapper>

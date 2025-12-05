@@ -84,10 +84,11 @@ export async function deriveDEK(fileHash: string): Promise<CryptoKey> {
  */
 export async function aesGcmEncrypt(
   fileData: ArrayBuffer,
-  dek: CryptoKey
+  dek: CryptoKey,
+  fixedIV?: Uint8Array
 ): Promise<{ IV: Uint8Array; TAG: Uint8Array; C: Uint8Array }> {
-  // 生成96位的随机IV
-  const IV = crypto.getRandomValues(new Uint8Array(12))
+  // 生成或使用提供的96位IV
+  const IV = fixedIV ? new Uint8Array(fixedIV) : crypto.getRandomValues(new Uint8Array(12))
 
   // 使用AES-GCM加密
   const encryptedResult = await crypto.subtle.encrypt(
@@ -113,7 +114,7 @@ export async function aesGcmEncrypt(
 /**
  * 完整的收敛加密流程
  */
-export async function convergentEncrypt(file: File, precomputedHash?: string): Promise<EncryptedData> {
+export async function convergentEncrypt(file: File, precomputedHash?: string, fixedIvBase64?: string): Promise<EncryptedData> {
   // 1. 计算文件哈希 H = HASH(M)
   const H = precomputedHash ?? await calculateFileHash(file)
 
@@ -124,7 +125,8 @@ export async function convergentEncrypt(file: File, precomputedHash?: string): P
   const fileBuffer = await file.arrayBuffer()
 
   // 4. AES-GCM加密 C, TAG = AES-GCM-Encrypt(M, DEK, IV)
-  const { IV, TAG, C } = await aesGcmEncrypt(fileBuffer, DEK)
+  const fixedIv = fixedIvBase64 ? base64ToUint8Array(fixedIvBase64) : undefined
+  const { IV, TAG, C } = await aesGcmEncrypt(fileBuffer, DEK, fixedIv)
 
   return {
     H,
@@ -206,8 +208,8 @@ export async function convergentDecrypt(
     const DEK = await deriveDEK(H)
 
     // 转换数据格式
-    const IV_bytes = base64ToArrayBuffer(IV)
-    const TAG_bytes = base64ToArrayBuffer(TAG)
+    const IV_bytes = base64ToUint8Array(IV)
+    const TAG_bytes = base64ToUint8Array(TAG)
     const C_bytes = new Uint8Array(await encryptedBlob.arrayBuffer())
 
     // 解密
@@ -237,7 +239,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 /**
  * 工具函数：Base64转ArrayBuffer
  */
-function base64ToArrayBuffer(base64: string): Uint8Array {
+function base64ToUint8Array(base64: string): Uint8Array {
   const binary = atob(base64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) {

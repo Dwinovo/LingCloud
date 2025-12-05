@@ -8,5 +8,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class InitRequest {
-    private String h;     // 文件hash（前端算好的 SHA-256 hex）
+    private String h;     // 文件hash（Base64编码的 SHA-256）
 }

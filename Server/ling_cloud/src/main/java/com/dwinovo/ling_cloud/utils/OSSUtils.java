@@ -34,6 +34,10 @@ public class OSSUtils {
         return "https://" + bucketName + "." + endpoint + "/" + objectName;
     }
 
+    public String uploadEncryptedFile(byte[] data) {
+        return uploadBytes(data, ".bin", "encrypted-files");
+    }
+
 
     /**
      * 从OSS删除文件

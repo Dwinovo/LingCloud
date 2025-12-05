@@ -1,5 +1,175 @@
-# Vue 3 + TypeScript + Vite
+# LingCloud 前端
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+一个现代化的云存储服务前端应用，支持文件加密上传、去重和安全存储。
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+## 功能特性
+
+- 🔐 **安全认证**: 用户注册/登录，JWT Token 认证
+- 🔒 **收敛加密**: 基于文件内容哈希的客户端加密
+- ⚡ **秒传功能**: 相同文件基于哈希去重，避免重复上传
+- 🎨 **现代界面**: Element Plus 组件库，蓝白科技风设计
+- 📱 **响应式设计**: 支持桌面端和移动端
+
+## 技术栈
+
+- **框架**: Vue 3 + TypeScript
+- **UI组件**: Element Plus
+- **状态管理**: Pinia
+- **路由**: Vue Router 4
+- **HTTP客户端**: Axios
+- **加密**: Crypto.js
+- **构建工具**: Vite
+
+## 项目结构
+
+```
+src/
+├── components/          # 公共组件
+├── views/              # 页面组件
+│   ├── LoginPage.vue   # 登录/注册页面
+│   └── Dashboard.vue   # 主控制台页面
+├── stores/             # Pinia 状态管理
+│   └── auth.ts         # 认证状态
+├── router/             # 路由配置
+│   └── index.ts        # 路由定义
+├── utils/              # 工具函数
+│   ├── api.ts          # API 接口
+│   └── crypto.ts       # 加密工具
+├── App.vue             # 根组件
+└── main.ts             # 入口文件
+```
+
+## 安装和运行
+
+### 环境要求
+
+- Node.js >= 16
+- npm >= 7
+
+### 安装依赖
+
+```bash
+npm install
+```
+
+### 开发模式
+
+```bash
+npm run dev
+```
+
+前端开发服务器将运行在 http://localhost:5173/
+
+### 构建生产版本
+
+```bash
+npm run build
+```
+
+## 核心功能说明
+
+### 1. 用户认证
+
+- **登录**: 用户名/密码登录，支持 Cookie 存储认证信息
+- **注册**: 新用户注册，包含用户名、昵称和密码
+- **认证状态**: 使用 Pinia 管理用户登录状态
+
+### 2. 文件加密
+
+**收敛加密（Convergent Encryption）**:
+- 计算文件明文哈希作为加密密钥
+- 使用 AES 对称加密算法
+- 相同文件产生相同的加密结果，实现去重
+
+```typescript
+// 计算文件哈希
+const hashPlain = await calculateFileHash(file)
+
+// 使用哈希作为密钥加密
+const encryptedBlob = await convergentEncrypt(file, hashPlain)
+
+// 上传加密后的文件
+const formData = new FormData()
+formData.append('hash_plain', hashPlain)
+formData.append('file', encryptedBlob, filename)
+```
+
+### 3. 文件管理
+
+- **文件上传**: 支持拖拽上传、多文件选择
+- **文件列表**: 展示已上传文件，支持下载和删除
+- **文件类型**: 自动识别文件类型并显示对应图标
+
+## API 接口
+
+### 认证接口
+
+```typescript
+// 用户注册
+POST /api/auth/register
+{
+  "username": "string",
+  "password": "string",
+  "nickname": "string"
+}
+
+// 用户登录
+POST /api/auth/login
+{
+  "username": "string",
+  "password": "string"
+}
+```
+
+### 文件接口
+
+```typescript
+// 文件上传
+POST /api/file/upload
+Content-Type: multipart/form-data
+Body: FormData(hash_plain, file)
+
+// 获取文件列表
+GET /api/file/list
+
+// 下载文件
+GET /api/file/download/{fileId}
+```
+
+## 开发说明
+
+### 环境配置
+
+开发环境会通过 Vite 代理将 `/api` 请求转发到后端服务器（默认 http://localhost:8080）。
+
+### 样式规范
+
+- 使用蓝白科技风格配色
+- 主要颜色: #3b82f6 (蓝色)
+- 圆角设计，现代化界面
+- 响应式布局适配移动端
+
+### 安全考虑
+
+- 所有加密操作在客户端完成
+- 传输过程使用 HTTPS（生产环境）
+- Cookie 设置 httpOnly 和 secure 属性
+- JWT Token 有效期控制
+
+## 部署说明
+
+1. 构建生产版本: `npm run build`
+2. 将 `dist` 目录部署到静态文件服务器
+3. 配置反向代理将 `/api` 转发到后端服务器
+4. 配置 HTTPS 和安全头
+
+## 浏览器兼容性
+
+- Chrome >= 88
+- Firefox >= 85
+- Safari >= 14
+- Edge >= 88
+
+## License
+
+MIT License

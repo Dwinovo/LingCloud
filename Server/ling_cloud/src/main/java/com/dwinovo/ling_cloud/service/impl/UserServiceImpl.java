@@ -6,6 +6,7 @@ import com.dwinovo.ling_cloud.dto.RegisterRequest;
 import com.dwinovo.ling_cloud.mapper.UserMapper;
 import com.dwinovo.ling_cloud.pojo.User;
 import com.dwinovo.ling_cloud.service.UserService;
+import com.dwinovo.ling_cloud.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,9 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserMapper userMapper;
 
-    
+    @Autowired
+    private JwtUtil jwtUtil;
+
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     /**
@@ -81,5 +84,36 @@ public class UserServiceImpl implements UserService {
     @Override
     public User findById(String id) {
         return userMapper.findById(id);
+    }
+
+    /**
+     * 根据JWT令牌获取用户信息
+     */
+    @Override
+    public User getUserByToken(String token) {
+        // 验证token是否为空
+        if (token == null || token.trim().isEmpty()) {
+            throw new BusinessException("未提供认证令牌");
+        }
+
+        try {
+            // 解析JWT令牌
+            var claims = jwtUtil.parse(token);
+            String username = claims.getSubject();
+
+            // 根据用户名获取用户信息
+            User user = userMapper.findByUsername(username);
+
+            if (user == null) {
+                throw new BusinessException("用户不存在");
+            }
+
+            // 不返回密码等敏感信息
+            user.setPasswordHash(null);
+
+            return user;
+        } catch (Exception e) {
+            throw new BusinessException("令牌无效或已过期");
+        }
     }
 }

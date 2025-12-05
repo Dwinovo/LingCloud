@@ -60,7 +60,8 @@ public class AuthController {
 
         // 设置HTTP Cookie
         ResponseCookie cookie = ResponseCookie.from("access_token", token)
-                .httpOnly(true)  // 防止XSS攻击
+                // 前端需要读取 token，因此在开发阶段关闭 HttpOnly
+                .httpOnly(false)
                 .secure(false)   // 开发环境用HTTP，生产环境设为true
                 .path("/")
                 .maxAge(24 * 60 * 60)  // 24小时

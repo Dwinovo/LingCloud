@@ -25,4 +25,9 @@ public interface UserService {
      * 根据ID查找用户
      */
     User findById(String id);
+
+    /**
+     * 根据JWT令牌获取用户信息
+     */
+    User getUserByToken(String token);
 }

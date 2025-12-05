@@ -1,6 +1,5 @@
 package com.dwinovo.ling_cloud.controller;
 
-import com.dwinovo.ling_cloud.annotation.OperationLog;
 import com.dwinovo.ling_cloud.common.ApiResponse;
 import com.dwinovo.ling_cloud.common.StatusEnum;
 import com.dwinovo.ling_cloud.dto.file.FileDownloadResponse;
@@ -28,7 +27,6 @@ public class FileController {
     private JwtUtil jwtUtil;
     
     @PostMapping("/init")
-    @OperationLog("file:init")
     public ApiResponse<InitResponse> initUpload(@RequestBody InitRequest request, HttpServletRequest httpRequest) {
         if (request == null || request.getH() == null || request.getH().isBlank()) {
             return ApiResponse.error(StatusEnum.BAD_REQUEST, "文件哈希不能为空");
@@ -46,7 +44,6 @@ public class FileController {
      * Controller 只负责拿到二进制并转交给 Service 处理
      */
     @PostMapping("/pow")
-    @OperationLog("file:pow")
     public ApiResponse<String> submitPow(
         @RequestParam("payload") MultipartFile payload,
         @RequestParam("filename") String filename,
@@ -97,7 +94,6 @@ public class FileController {
     }
 
     @GetMapping("/{id}")
-    @OperationLog("file:download")
     public ApiResponse<FileDownloadResponse> downloadFile(@PathVariable("id") String id, HttpServletRequest httpRequest) {
         String userId = resolveUserId(httpRequest);
         if (userId == null) {
@@ -111,7 +107,6 @@ public class FileController {
     }
 
     @DeleteMapping("/{id}")
-    @OperationLog("file:delete")
     public ApiResponse<String> deleteFile(@PathVariable("id") String id, HttpServletRequest httpRequest) {
         String userId = resolveUserId(httpRequest);
         if (userId == null) {

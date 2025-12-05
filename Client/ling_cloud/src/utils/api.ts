@@ -53,6 +53,16 @@ export interface DownloadFileInfo {
   url: string
 }
 
+export interface OperationLog {
+  id: number
+  userId: string
+  username: string
+  action: string
+  status: string
+  ipAddress: string
+  createdAt: string
+}
+
 
 export const authApi = {
   // 用户注册
@@ -100,6 +110,14 @@ export const fileApi = {
   // 删除文件
   delete: (fileId: string) =>
     api.delete<ApiResponse<string>>(`/file/${encodeURIComponent(fileId)}`)
+}
+
+export const logApi = {
+  // 获取操作日志
+  list: (limit = 100) =>
+    api.get<ApiResponse<OperationLog[]>>('/logs', {
+      params: { limit }
+    })
 }
 
 export default api

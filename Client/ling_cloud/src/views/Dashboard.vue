@@ -27,123 +27,131 @@
     <div class="main-content">
       <!-- 侧边栏 -->
       <div class="sidebar">
-        <div class="menu-item active">
-          <el-icon><Folder /></el-icon>
-          <span>我的文件</span>
-        </div>
-        <div class="menu-item">
-          <el-icon><Share /></el-icon>
-          <span>分享文件</span>
-        </div>
-        <div class="menu-item">
-          <el-icon><Setting /></el-icon>
-          <span>设置</span>
+        <div
+          v-for="item in menuItems"
+          :key="item.key"
+          class="menu-item"
+          :class="{ active: activeMenu === item.key }"
+          @click="handleMenuSelect(item.key)"
+        >
+          <el-icon>
+            <component :is="item.icon" />
+          </el-icon>
+          <span>{{ item.label }}</span>
         </div>
       </div>
 
       <!-- 文件管理区域 -->
       <div class="file-manager">
-        <!-- 文件上传区域 -->
-        <div class="upload-section">
-          <el-upload
-            ref="uploadRef"
-            class="upload-dragger"
-            drag
-            :auto-upload="false"
-            :on-change="handleFileChange"
-            :on-remove="handleFileRemove"
-            :file-list="uploadFiles"
-            multiple
-          >
-            <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-            <div class="el-upload__text">
-              将文件拖拽到此处，或<em>点击上传</em>
-            </div>
-            <template #tip>
-              <div class="el-upload__tip">
-                支持多文件上传，文件会自动加密并去重
-              </div>
-            </template>
-          </el-upload>
-          <div v-if="uploadFiles.length > 0" class="upload-actions">
-            <el-button
-              type="primary"
-              :loading="uploading"
-              @click="handleUpload"
+        <template v-if="activeMenu === 'files'">
+          <!-- 文件上传区域 -->
+          <div class="upload-section">
+            <el-upload
+              ref="uploadRef"
+              class="upload-dragger"
+              drag
+              :auto-upload="false"
+              :on-change="handleFileChange"
+              :on-remove="handleFileRemove"
+              :file-list="uploadFiles"
+              multiple
             >
-              <el-icon><Upload /></el-icon>
-              开始上传
-            </el-button>
-            <el-button @click="clearUploadList">
-              <el-icon><Delete /></el-icon>
-              清空列表
-            </el-button>
-          </div>
-        </div>
-
-        <!-- 文件列表 -->
-        <div class="file-list">
-          <div class="list-header">
-            <h3>文件列表</h3>
-            <div class="list-actions">
-              <el-button size="small" @click="refreshFileList">
-                <el-icon><Refresh /></el-icon>
-                刷新
+              <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+              <div class="el-upload__text">
+                将文件拖拽到此处，或<em>点击上传</em>
+              </div>
+              <template #tip>
+                <div class="el-upload__tip">
+                  支持多文件上传，文件会自动加密并去重
+                </div>
+              </template>
+            </el-upload>
+            <div v-if="uploadFiles.length > 0" class="upload-actions">
+              <el-button
+                type="primary"
+                :loading="uploading"
+                @click="handleUpload"
+              >
+                <el-icon><Upload /></el-icon>
+                开始上传
+              </el-button>
+              <el-button @click="clearUploadList">
+                <el-icon><Delete /></el-icon>
+                清空列表
               </el-button>
             </div>
           </div>
 
-          <el-table
-            v-loading="fileListLoading"
-            :data="fileList"
-            style="width: 100%"
-            empty-text="暂无文件"
-          >
-            <el-table-column prop="name" label="文件名" min-width="200">
-              <template #default="{ row }">
-                <div class="file-name">
-                  <el-icon class="file-icon">
-                    <Document v-if="row.type === 'document'" />
-                    <Picture v-else-if="row.type === 'image'" />
-                    <VideoPlay v-else-if="row.type === 'video'" />
-                    <VideoCamera v-else-if="row.type === 'audio'" />
-                    <Files v-else />
-                  </el-icon>
-                  <span>{{ row.name }}</span>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="size" label="大小" width="120">
-              <template #default="{ row }">
-                {{ formatFileSize(row.size) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="uploadTime" label="上传时间" width="180">
-              <template #default="{ row }">
-                {{ formatDate(row.uploadTime) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="200">
-              <template #default="{ row }">
-                <el-button
-                  size="small"
-                  type="primary"
-                  @click="handleDownload(row)"
-                >
-                  <el-icon><Download /></el-icon>
-                  下载
+          <!-- 文件列表 -->
+          <div class="file-list">
+            <div class="list-header">
+              <h3>文件列表</h3>
+              <div class="list-actions">
+                <el-button size="small" @click="refreshFileList">
+                  <el-icon><Refresh /></el-icon>
+                  刷新
                 </el-button>
-                <el-button
-                  size="small"
-                  type="danger"
-                  @click="handleDelete(row)"
-                >
-                  <el-icon><Delete /></el-icon>
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+              </div>
+            </div>
+
+            <el-table
+              v-loading="fileListLoading"
+              :data="fileList"
+              style="width: 100%"
+              table-layout="fixed"
+              empty-text="暂无文件"
+            >
+              <el-table-column prop="name" label="文件名" min-width="200" align="center">
+                <template #default="{ row }">
+                  <div class="file-name">
+                    <el-icon class="file-icon">
+                      <Document v-if="row.type === 'document'" />
+                      <Picture v-else-if="row.type === 'image'" />
+                      <VideoPlay v-else-if="row.type === 'video'" />
+                      <VideoCamera v-else-if="row.type === 'audio'" />
+                      <Files v-else />
+                    </el-icon>
+                    <span>{{ row.name }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="size" label="大小" width="120" align="center">
+                <template #default="{ row }">
+                  {{ formatFileSize(row.size) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="uploadTime" label="上传时间" width="180" align="center">
+                <template #default="{ row }">
+                  {{ formatDate(row.uploadTime) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="200" align="center">
+                <template #default="{ row }">
+                  <el-button
+                    size="small"
+                    type="primary"
+                    @click="handleDownload(row)"
+                  >
+                    <el-icon><Download /></el-icon>
+                    下载
+                  </el-button>
+                  <el-button
+                    size="small"
+                    type="danger"
+                    @click="handleDelete(row)"
+                  >
+                    <el-icon><Delete /></el-icon>
+                    删除
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </template>
+
+        
+        <div v-else class="placeholder-section">
+          <el-empty :description="placeholderMessages[activeMenu] || '功能开发中，敬请期待'" />
         </div>
       </div>
     </div>
@@ -167,7 +175,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, type Component } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type UploadInstance, type UploadUserFile } from 'element-plus'
 import {
@@ -207,6 +215,23 @@ const powPromiseResolve = ref<(() => void) | null>(null)
 const powPromiseReject = ref<((reason?: any) => void) | null>(null)
 const fileListLoading = ref(false)
 const uploadFiles = ref<UploadUserFile[]>([])
+type MenuKey = 'files' | 'share' | 'settings'
+interface MenuItem {
+  key: MenuKey
+  label: string
+  icon: Component
+}
+const menuItems: MenuItem[] = [
+  { key: 'files', label: '我的文件', icon: Folder },
+  { key: 'share', label: '分享文件', icon: Share },
+  { key: 'settings', label: '设置', icon: Setting }
+]
+const placeholderMessages: Record<MenuKey, string> = {
+  files: '',
+  share: '分享文件功能开发中，敬请期待',
+  settings: '设置功能开发中，敬请期待'
+}
+const activeMenu = ref<MenuKey>('files')
 
 interface FileItem {
   id: string
@@ -218,6 +243,10 @@ interface FileItem {
 }
 
 const fileList = ref<FileItem[]>([])
+
+const handleMenuSelect = (key: MenuKey) => {
+  activeMenu.value = key
+}
 
 // 处理用户菜单命令
 const handleUserMenuCommand = (command: string) => {
@@ -471,6 +500,7 @@ const hexToUint8Array = (hex: string): Uint8Array => {
   return bytes
 }
 
+
 // 刷新文件列表
 const refreshFileList = async () => {
   fileListLoading.value = true
@@ -536,6 +566,7 @@ const handleDelete = (file: FileItem) => {
     }
   })
 }
+
 
 // 格式化文件大小
 const formatFileSize = (bytes: number): string => {
@@ -798,6 +829,20 @@ onMounted(async () => {
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+
+
+.placeholder-section {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .list-header {
   display: flex;
   justify-content: space-between;
@@ -823,21 +868,26 @@ onMounted(async () => {
   font-size: 16px;
 }
 
-:deep(.el-table) {
-  border-radius: 8px;
+
+
+/* 简化表格内部结构，减少冗余嵌套 */
+:deep(.el-table__body-wrapper) {
+  position: relative;
+  overflow: hidden;
 }
 
-:deep(.el-table th) {
-  background-color: #f8fafc;
-  font-weight: 600;
-  color: #475569;
-  border-bottom: 1px solid #e2e8f0;
+:deep(.el-table__body-wrapper .el-scrollbar) {
+  height: 100%;
 }
 
-:deep(.el-table td) {
-  border-bottom: 1px solid #f1f5f9;
+:deep(.el-table__body-wrapper .el-scrollbar__wrap) {
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
+:deep(.el-table__body-wrapper .el-scrollbar__view) {
+  width: 100%;
+}
 
 :deep(.el-dialog__body) {
   color: #1e293b;

@@ -1,7 +1,7 @@
 package com.dwinovo.ling_cloud.service;
 
-import com.dwinovo.ling_cloud.dto.LoginRequest;
-import com.dwinovo.ling_cloud.dto.RegisterRequest;
+import com.dwinovo.ling_cloud.dto.auth.LoginRequest;
+import com.dwinovo.ling_cloud.dto.auth.RegisterRequest;
 import com.dwinovo.ling_cloud.pojo.User;
 
 public interface UserService {

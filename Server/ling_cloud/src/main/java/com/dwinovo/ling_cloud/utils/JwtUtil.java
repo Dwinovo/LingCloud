@@ -3,6 +3,9 @@ package com.dwinovo.ling_cloud.utils;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -50,6 +53,26 @@ public class JwtUtil {
                 .parseSignedClaims(token)
                 .getPayload();
     }
-}
 
+    /**
+     * 从请求 Cookie 中提取 access_token
+     */
+    public String extractTokenFromCookies(HttpServletRequest request) {
+        if (request == null) {
+            return null;
+        }
+
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null || cookies.length == 0) {
+            return null;
+        }
+
+        for (Cookie cookie : cookies) {
+            if (cookie != null && "access_token".equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
+}
 

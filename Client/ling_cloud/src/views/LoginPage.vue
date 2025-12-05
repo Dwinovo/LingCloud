@@ -179,18 +179,6 @@ const handleLogin = async () => {
       authStore.setUserInfo(response.data.data)
       ElMessage.success('登录成功')
 
-      // 临时解决方案：从后端响应数据中获取token并手动设置Cookie
-      // 假设后端返回的data中包含token字段
-      if (response.data.data && response.data.data.token) {
-        console.log('手动设置token Cookie')
-        document.cookie = `access_token=${response.data.data.token}; path=/; max-age=86400; samesite=lax`
-      } else {
-        // 如果没有token，创建一个临时的token用于测试
-        console.log('创建临时token用于测试')
-        const tempToken = btoa(`${loginForm.username}:${Date.now()}`)
-        document.cookie = `access_token=${tempToken}; path=/; max-age=86400; samesite=lax; domain=localhost`
-      }
-
       // 使用Vue Router编程式导航 - 官方推荐方式
       console.log('登录成功，准备跳转到dashboard')
       console.log('Cookie状态:', document.cookie)

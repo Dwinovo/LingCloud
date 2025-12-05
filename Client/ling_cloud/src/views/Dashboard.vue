@@ -159,7 +159,6 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type UploadInstance, type UploadUserFile } from 'element-plus'
 import {
-  UserFilled,
   ArrowDown,
   Folder,
   Upload,
@@ -177,7 +176,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import { fileApi } from '../utils/api'
-import { calculateFileHash, convergentEncrypt } from '../utils/crypto'
+import { convergentEncrypt, buildUploadMessage, calculateFileHash } from '../utils/crypto'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -224,12 +223,12 @@ const handleLogout = () => {
 }
 
 // 处理文件选择
-const handleFileChange = (file: any, fileList: any[]) => {
+const handleFileChange = (_file: any, fileList: any[]) => {
   uploadFiles.value = fileList
 }
 
 // 处理文件移除
-const handleFileRemove = (file: any, fileList: any[]) => {
+const handleFileRemove = (_file: any, fileList: any[]) => {
   uploadFiles.value = fileList
 }
 
@@ -252,18 +251,39 @@ const handleUpload = async () => {
     const uploadPromises = uploadFiles.value.map(async (fileObj) => {
       if (!fileObj.raw) return Promise.resolve()
 
-      // 计算文件哈希
-      ElMessage.info(`正在计算 ${fileObj.name} 的哈希值...`)
-      const hashPlain = await calculateFileHash(fileObj.raw)
+      ElMessage.info(`正在初始化 ${fileObj.name}...`)
+      const hashHex = await calculateFileHash(fileObj.raw)
+      const initResponse = await fileApi.init(hashHex)
+      const initData = initResponse.data.data
 
-      // 加密文件
+      if (!initData) {
+        throw new Error('初始化响应异常')
+      }
+
+      if (initData.status === 'ALLOW') {
+        ElMessage.success(`${fileObj.name} 已存在，秒传成功`)
+        return fileObj.name
+      }
+
+      if (initData.status !== 'POW') {
+        ElMessage.warning(`${fileObj.name} 返回未知状态：${initData.status}，已跳过`)
+        return
+      }
+
+      // 需要进行实际上传
       ElMessage.info(`正在加密 ${fileObj.name}...`)
-      const encryptedBlob = await convergentEncrypt(fileObj.raw, hashPlain)
+      const encryptedData = await convergentEncrypt(fileObj.raw, hashHex)
+
+      // 构建上传消息
+      const uploadMessage = buildUploadMessage(encryptedData)
 
       // 创建FormData
       const formData = new FormData()
-      formData.append('hash_plain', hashPlain)
-      formData.append('file', encryptedBlob, fileObj.name)
+      formData.append('H', uploadMessage.H)              // 文件哈希
+      formData.append('IV', uploadMessage.IV)            // IV的base64编码
+      formData.append('TAG', uploadMessage.TAG)          // TAG的base64编码
+      formData.append('C', uploadMessage.C, fileObj.name) // 密文Blob
+      formData.append('L', uploadMessage.L.toString())   // 文件长度
 
       // 上传文件
       await fileApi.upload(formData)

@@ -33,6 +33,11 @@ export interface ApiResponse<T = any> {
   code: number
 }
 
+export interface InitUploadResponse {
+  status: string
+  message: string
+}
+
 export const authApi = {
   // 用户注册
   register: (username: string, password: string, nickname: string) =>
@@ -48,6 +53,10 @@ export const authApi = {
 }
 
 export const fileApi = {
+  // 上传前初始化，返回是否需要PoW
+  init: (hash: string) =>
+    api.post<ApiResponse<InitUploadResponse>>('/file/init', { h: hash }),
+
   // 文件上传
   upload: (formData: FormData) =>
     api.post<ApiResponse<void>>('/file/upload', formData, {

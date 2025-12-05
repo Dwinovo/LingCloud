@@ -1,4 +1,4 @@
-package com.dwinovo.ling_cloud.dto;
+package com.dwinovo.ling_cloud.dto.auth;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;

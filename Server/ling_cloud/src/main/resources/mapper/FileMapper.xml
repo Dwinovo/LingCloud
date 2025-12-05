@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dwinovo.ling_cloud.mapper.FileMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="FileResultMap" type="com.dwinovo.ling_cloud.pojo.File">
+        <id column="H" property="H"/>
+        <result column="L" property="L"/>
+        <result column="IV" property="IV"/>
+        <result column="TAG" property="TAG"/>
+        <result column="C" property="C"/>
+        <result column="offset" property="offset"/>
+        <result column="size" property="size"/>
+        <result column="MAC" property="MAC"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <!-- 根据文件哈希查找文件 -->
+    <select id="findByHash" resultMap="FileResultMap">
+        SELECT H, L, IV, TAG, C, offset, size, MAC, created_at, updated_at
+        FROM files
+        WHERE H = #{hash}
+    </select>
+
+    <!-- 插入新文件 -->
+    <insert id="insert" parameterType="com.dwinovo.ling_cloud.pojo.File">
+        INSERT INTO files (H, L, IV, TAG, C, offset, size, MAC, created_at, updated_at)
+        VALUES (#{H}, #{L}, #{IV}, #{TAG}, #{C}, #{offset}, #{size}, #{MAC}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <!-- 更新文件信息 -->
+    <update id="update" parameterType="com.dwinovo.ling_cloud.pojo.File">
+        UPDATE files
+        SET L = #{L},
+            IV = #{IV},
+            TAG = #{TAG},
+            C = #{C},
+            offset = #{offset},
+            size = #{size},
+            MAC = #{MAC},
+            updated_at = #{updatedAt}
+        WHERE H = #{H}
+    </update>
+
+</mapper>

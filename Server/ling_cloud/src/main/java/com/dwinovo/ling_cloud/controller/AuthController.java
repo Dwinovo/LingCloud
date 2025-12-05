@@ -1,10 +1,10 @@
 package com.dwinovo.ling_cloud.controller;
 
 import com.dwinovo.ling_cloud.common.ApiResponse;
-import com.dwinovo.ling_cloud.dto.LoginRequest;
-import com.dwinovo.ling_cloud.dto.RegisterRequest;
-import com.dwinovo.ling_cloud.dto.RegisterResponse;
-import com.dwinovo.ling_cloud.dto.LoginResponse;
+import com.dwinovo.ling_cloud.dto.auth.LoginRequest;
+import com.dwinovo.ling_cloud.dto.auth.LoginResponse;
+import com.dwinovo.ling_cloud.dto.auth.RegisterRequest;
+import com.dwinovo.ling_cloud.dto.auth.RegisterResponse;
 import com.dwinovo.ling_cloud.pojo.User;
 import com.dwinovo.ling_cloud.service.UserService;
 import com.dwinovo.ling_cloud.utils.JwtUtil;
@@ -56,7 +56,7 @@ public class AuthController {
             "userId", user.getId(),
             "username", user.getUsername()
         );
-        String token = jwtUtil.generateAccessToken(user.getUsername(), claims);
+        String token = jwtUtil.generateAccessToken(user.getId(), claims);
 
         // 设置HTTP Cookie
         ResponseCookie cookie = ResponseCookie.from("access_token", token)

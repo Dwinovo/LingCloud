@@ -3,6 +3,8 @@ package com.dwinovo.ling_cloud.controller;
 import com.dwinovo.ling_cloud.common.ApiResponse;
 import com.dwinovo.ling_cloud.pojo.User;
 import com.dwinovo.ling_cloud.service.UserService;
+import com.dwinovo.ling_cloud.utils.JwtUtil;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +17,8 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+    @Autowired
+    private JwtUtil jwtUtil;
 
     /**
      * 获取当前用户信息
@@ -22,7 +26,7 @@ public class UserController {
     @GetMapping("/me")
     public ApiResponse<User> getCurrentUser(HttpServletRequest request) {
         // 从请求中提取JWT令牌
-        String token = extractTokenFromRequest(request);
+        String token = jwtUtil.extractTokenFromCookies(request);
 
         // 通过Service层处理业务逻辑（包括token验证）
         User user = userService.getUserByToken(token);
@@ -30,18 +34,4 @@ public class UserController {
         return ApiResponse.success(user, "获取用户信息成功");
     }
 
-    /**
-     * 从请求中提取JWT令牌
-     */
-    private String extractTokenFromRequest(HttpServletRequest request) {
-        // 尝试从Cookie中获取
-        if (request.getCookies() != null) {
-            for (var cookie : request.getCookies()) {
-                if ("access_token".equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
-        }
-        return null;
-    }
 }

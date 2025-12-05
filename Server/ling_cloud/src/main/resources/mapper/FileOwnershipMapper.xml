@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dwinovo.ling_cloud.mapper.FileOwnershipMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="FileOwnershipResultMap" type="com.dwinovo.ling_cloud.pojo.FileOwnership">
+        <id column="id" property="id"/>
+        <result column="H" property="H"/>
+        <result column="user_id" property="userId"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <!-- 根据文件哈希查找所有拥有者 -->
+    <select id="findByFileHash" resultMap="FileOwnershipResultMap">
+        SELECT id, H, user_id, created_at
+        FROM file_ownership
+        WHERE H = #{hash}
+    </select>
+
+    <!-- 检查用户是否拥有指定文件 -->
+    <select id="findByUserAndFile" resultMap="FileOwnershipResultMap">
+        SELECT id, H, user_id, created_at
+        FROM file_ownership
+        WHERE user_id = #{userId} AND H = #{hash}
+        LIMIT 1
+    </select>
+
+    <!-- 添加文件拥有关系 -->
+    <insert id="insert" parameterType="com.dwinovo.ling_cloud.pojo.FileOwnership">
+        INSERT INTO file_ownership (id, H, user_id, created_at)
+        VALUES (#{id}, #{H}, #{userId}, #{createdAt})
+    </insert>
+
+    <!-- 删除文件拥有关系 -->
+    <delete id="delete">
+        DELETE FROM file_ownership
+        WHERE id = #{id}
+    </delete>
+
+</mapper>

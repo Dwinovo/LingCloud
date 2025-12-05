@@ -1,8 +1,8 @@
 package com.dwinovo.ling_cloud.service.impl;
 
 import com.dwinovo.ling_cloud.common.BusinessException;
-import com.dwinovo.ling_cloud.dto.LoginRequest;
-import com.dwinovo.ling_cloud.dto.RegisterRequest;
+import com.dwinovo.ling_cloud.dto.auth.LoginRequest;
+import com.dwinovo.ling_cloud.dto.auth.RegisterRequest;
 import com.dwinovo.ling_cloud.mapper.UserMapper;
 import com.dwinovo.ling_cloud.pojo.User;
 import com.dwinovo.ling_cloud.service.UserService;
@@ -95,25 +95,21 @@ public class UserServiceImpl implements UserService {
         if (token == null || token.trim().isEmpty()) {
             throw new BusinessException("未提供认证令牌");
         }
+        // 解析JWT令牌
+        var claims = jwtUtil.parse(token);
+        String id = claims.getSubject();
 
-        try {
-            // 解析JWT令牌
-            var claims = jwtUtil.parse(token);
-            String username = claims.getSubject();
+        // 根据id获取用户信息
+        User user = userMapper.findById(id);
 
-            // 根据用户名获取用户信息
-            User user = userMapper.findByUsername(username);
-
-            if (user == null) {
-                throw new BusinessException("用户不存在");
-            }
-
-            // 不返回密码等敏感信息
-            user.setPasswordHash(null);
-
-            return user;
-        } catch (Exception e) {
-            throw new BusinessException("令牌无效或已过期");
+        if (user == null) {
+            throw new BusinessException("用户不存在");
         }
+
+        // 不返回密码等敏感信息
+        user.setPasswordHash(null);
+
+        return user;
+        
     }
 }

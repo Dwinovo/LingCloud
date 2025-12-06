@@ -23,27 +23,16 @@ const router = createRouter({
   ]
 })
 
-// 路由守卫 - 使用Vue Router官方推荐方式
-router.beforeEach((to, from) => {
-  // 检查是否有有效的access_token
-  const hasToken = document.cookie
-    .split('; ')
-    .some(row => row.startsWith('access_token='))
-
-  // 需要认证的路由但没有token
-  if (to.meta.requiresAuth && !hasToken) {
-    console.log('需要认证但没有token，重定向到登录页')
-    return { name: 'login' }
+// 路由守卫 - 检查登录页面的token
+router.beforeEach(async (to) => {
+  // 访问登录页面时，如果已经有token则跳转到dashboard
+  if (to.path === '/login') {
+    const hasToken = document.cookie.includes('access_token=')
+    if (hasToken) {
+      return { name: 'dashboard' }
+    }
   }
 
-  // 已登录但访问登录页，重定向到dashboard
-  if (to.path === '/login' && hasToken) {
-    console.log('已登录用户访问登录页，重定向到dashboard')
-    return { name: 'dashboard' }
-  }
-
-  // 其他情况正常通过
-  console.log('路由守卫检查通过:', { from: from.path, to: to.path, authenticated: hasToken })
   return true
 })
 

@@ -195,7 +195,7 @@ import {
   Download
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
-import { fileApi, type InitUploadResponse, type UserFileInfo, type DownloadFileInfo } from '../utils/api'
+import { authApi, fileApi, type InitUploadResponse, type UserFileInfo, type DownloadFileInfo } from '../utils/api'
 import { convergentEncrypt, buildUploadMessage, calculateFileHash, convergentDecrypt, downloadFile } from '../utils/crypto'
 
 const router = useRouter()
@@ -266,10 +266,19 @@ const handleLogout = () => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    authStore.clearUserInfo()
-    router.push('/login')
-    ElMessage.success('已退出登录')
+  }).then(async () => {
+    try {
+      // 调用后端logout接口，让后端清除Cookie
+      await authApi.logout()
+      // 清除前端用户状态
+      authStore.clearUserInfo()
+      // 跳转到登录页面
+      window.location.href = '/login'
+      ElMessage.success('已退出登录')
+    } catch (error: any) {
+      console.error('退出登录失败:', error)
+      ElMessage.error('退出登录失败：' + (error.response?.data?.message || error.message))
+    }
   })
 }
 

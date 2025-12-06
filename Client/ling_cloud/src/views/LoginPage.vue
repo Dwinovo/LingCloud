@@ -183,14 +183,8 @@ const handleLogin = async () => {
       console.log('登录成功，准备跳转到dashboard')
       console.log('Cookie状态:', document.cookie)
 
-      // 立即执行导航，不需要延迟
+      // 登录成功后直接跳转
       router.push({ name: 'dashboard' })
-        .then(() => {
-          console.log('导航成功完成')
-        })
-        .catch((error) => {
-          console.error('导航失败:', error)
-        })
     } else {
       ElMessage.error(response.data.message || '登录失败')
     }

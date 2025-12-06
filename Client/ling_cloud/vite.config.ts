@@ -13,12 +13,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'https://api.huining.fun',
         changeOrigin: true,
-        secure: false,
-        cookieDomainRewrite: {
-          "localhost:8080": "localhost"
-        }
+        secure: true
       }
     }
   }

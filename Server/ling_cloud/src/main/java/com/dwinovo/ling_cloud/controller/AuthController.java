@@ -60,12 +60,12 @@ public class AuthController {
 
         // 设置HTTP Cookie
         ResponseCookie cookie = ResponseCookie.from("access_token", token)
-                // 前端需要读取 token，因此在开发阶段关闭 HttpOnly
-                .httpOnly(false)
-                .secure(false)   // 开发环境用HTTP，生产环境设为true
+                .httpOnly(true)  // 启用HttpOnly，防止XSS攻击
+                .secure(true)    // HTTPS环境必须启用Secure
                 .path("/")
                 .maxAge(24 * 60 * 60)  // 24小时
-                .sameSite("Lax")  // CSRF保护
+                .sameSite("None")  // CSRF保护
+                .domain(".huining.fun")  // 注意前面的点，允许所有子域名
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
@@ -76,5 +76,25 @@ public class AuthController {
         userInfo.setNickname(user.getNickname());
 
         return ApiResponse.success(userInfo, "登录成功");
+    }
+
+    /**
+     * 用户退出登录
+     */
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(HttpServletResponse response) {
+        // 创建一个过期的Cookie来删除现有的Cookie
+        ResponseCookie cookie = ResponseCookie.from("access_token", "")
+                .httpOnly(true)  // 与login时保持一致
+                .secure(true)
+                .path("/")
+                .maxAge(0)  // 立即过期
+                .sameSite("None")
+                .domain(".huining.fun")
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return ApiResponse.success(null, "退出登录成功");
     }
 }

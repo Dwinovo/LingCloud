@@ -14,17 +14,17 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 public class RedisConfig {
 
     // 从配置文件中读取Redis主机信息
-    @Value("${spring.redis.host}")
+    @Value("${spring.data.redis.host}")
     private String redisHost;
 
     // 从配置文件中读取Redis端口信息
-    @Value("${spring.redis.port}")
+    @Value("${spring.data.redis.port}")
     private int redisPort;
 
-    @Value("${spring.redis.password:}")
+    @Value("${spring.data.redis.password:}")
     private String redisPassword;
 
-    @Value("${spring.redis.database:0}")
+    @Value("${spring.data.redis.database:0}")
     private int redisDatabase;
 
     // 配置Redis连接工厂

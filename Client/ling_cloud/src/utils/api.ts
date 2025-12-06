@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-// 使用相对路径，通过 Vite 代理转发到后端
-const API_BASE_URL = '/api'
+// 根据环境选择API基础URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -14,6 +14,11 @@ const api = axios.create({
 // 响应拦截器
 api.interceptors.response.use(
   (response) => {
+    // 检查后端返回的code==2000，需要重新登录
+    if (response.data.code === 2000) {
+      window.location.href = '/login'
+      return Promise.reject(new Error('需要重新登录'))
+    }
     return response
   },
   (error) => {
@@ -75,7 +80,11 @@ export const authApi = {
 
   // 获取当前用户信息
   getCurrentUser: () =>
-    api.get<ApiResponse<any>>('/user/me')
+    api.get<ApiResponse<any>>('/user/me'),
+
+  // 用户退出登录
+  logout: () =>
+    api.post<ApiResponse<any>>('/auth/logout')
 }
 
 export const fileApi = {

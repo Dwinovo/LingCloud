@@ -1,6 +1,7 @@
 package com.dwinovo.ling_cloud.service.impl;
 
 import com.dwinovo.ling_cloud.common.BusinessException;
+import com.dwinovo.ling_cloud.common.StatusEnum;
 import com.dwinovo.ling_cloud.dto.auth.LoginRequest;
 import com.dwinovo.ling_cloud.dto.auth.RegisterRequest;
 import com.dwinovo.ling_cloud.mapper.UserMapper;
@@ -33,7 +34,7 @@ public class UserServiceImpl implements UserService {
         // 检查用户名是否已存在
         User existingUser = userMapper.findByUsername(registerRequest.getUsername());
         if (existingUser != null) {
-            throw new BusinessException("用户名已存在");
+            throw new BusinessException(StatusEnum.USERNAME_ALREADY_EXISTS);
         }
 
         // 创建新用户
@@ -59,12 +60,12 @@ public class UserServiceImpl implements UserService {
         // 查找用户
         User user = userMapper.findByUsername(loginRequest.getUsername());
         if (user == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException(StatusEnum.USER_NOT_FOUND);
         }
 
         // 使用BCrypt验证密码
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())) {
-            throw new BusinessException("密码错误");
+            throw new BusinessException(StatusEnum.PASSWORD_INCORRECT);
         }
 
         return user;
@@ -93,7 +94,7 @@ public class UserServiceImpl implements UserService {
     public User getUserByToken(String token) {
         // 验证token是否为空
         if (token == null || token.trim().isEmpty()) {
-            throw new BusinessException("未提供认证令牌");
+            throw new BusinessException(StatusEnum.UNAUTHORIZED);
         }
         // 解析JWT令牌
         var claims = jwtUtil.parse(token);
@@ -103,7 +104,7 @@ public class UserServiceImpl implements UserService {
         User user = userMapper.findById(id);
 
         if (user == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException(StatusEnum.USER_NOT_FOUND);
         }
 
         // 不返回密码等敏感信息

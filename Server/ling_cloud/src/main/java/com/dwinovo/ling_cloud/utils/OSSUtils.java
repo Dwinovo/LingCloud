@@ -2,6 +2,7 @@ package com.dwinovo.ling_cloud.utils;
 
 import com.aliyun.oss.OSS;
 import com.dwinovo.ling_cloud.common.BusinessException;
+import com.dwinovo.ling_cloud.common.StatusEnum;
 import com.dwinovo.ling_cloud.pojo.AliyunOSSProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,7 +55,7 @@ public class OSSUtils {
         String prefix = "https://" + bucketName + "." + endpoint + "/";
         if (!url.startsWith(prefix)) {
             log.error("无效的OSS URL: {}", url);
-            throw new BusinessException("提供的阿里云URL不是一个有效的OSS文件地址");
+            throw new BusinessException(StatusEnum.BAD_REQUEST, "提供的阿里云URL不是一个有效的OSS文件地址");
         }
         String objectName = url.substring(prefix.length());
 
@@ -63,7 +64,7 @@ public class OSSUtils {
             ossClient.deleteObject(bucketName, objectName);
         } catch (Exception e) {
             log.error("从OSS删除文件失败, objectName: {}", objectName, e);
-            throw new BusinessException("阿里云文件删除失败，请稍后重试");
+            throw new BusinessException(StatusEnum.OSS_DELETE_ERROR, "阿里云文件删除失败，请稍后重试");
         }
     }
 }

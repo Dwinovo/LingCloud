@@ -10,7 +10,8 @@ COPY . .
 # 安装依赖
 RUN npm install
 
-# 执行构建
+# 设置生产环境变量并执行构建
+ENV NODE_ENV=production
 RUN npm run build
 
 # 全局安装serve

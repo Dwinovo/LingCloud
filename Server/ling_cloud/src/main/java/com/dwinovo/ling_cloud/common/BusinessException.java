@@ -4,13 +4,14 @@ public class BusinessException extends RuntimeException {
 
     private final int code;
 
-    public BusinessException(int code, String message) {
-        super(message);
-        this.code = code;
+    public BusinessException(StatusEnum statusEnum) {
+        super(statusEnum.getMessage());
+        this.code = statusEnum.getCode();
     }
 
-    public BusinessException(String message) {
-        this(4001, message);  // 给个默认业务错误码
+    public BusinessException(StatusEnum statusEnum, String customMessage) {
+        super(customMessage);
+        this.code = statusEnum.getCode();
     }
 
     public int getCode() {

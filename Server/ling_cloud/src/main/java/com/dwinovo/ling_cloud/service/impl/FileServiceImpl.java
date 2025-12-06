@@ -60,20 +60,20 @@ public class FileServiceImpl implements FileService {
     @Override
     public InitResponse init(String userId, String hashBase64) {
         if (hashBase64 == null || hashBase64.isBlank()) {
-            throw new BusinessException(StatusEnum.BAD_REQUEST.getCode(), "文件哈希不能为空");
+            throw new BusinessException(StatusEnum.BAD_REQUEST, "文件哈希不能为空");
         }
         if (userId == null || userId.isBlank()) {
-            throw new BusinessException(StatusEnum.UNAUTHORIZED.getCode(), "请先登录");
+            throw new BusinessException(StatusEnum.UNAUTHORIZED, "请先登录");
         }
 
         byte[] hashBytes;
         try {
             hashBytes = Base64.getDecoder().decode(hashBase64);
         } catch (IllegalArgumentException e) {
-            throw new BusinessException(StatusEnum.BAD_REQUEST.getCode(), "文件哈希格式不正确");
+            throw new BusinessException(StatusEnum.BAD_REQUEST, "文件哈希格式不正确");
         }
         if (hashBytes.length == 0) {
-            throw new BusinessException(StatusEnum.BAD_REQUEST.getCode(), "文件哈希不能为空");
+            throw new BusinessException(StatusEnum.BAD_REQUEST, "文件哈希不能为空");
         }
 
         String normalizedHashBase64 = Base64.getEncoder().encodeToString(hashBytes);
@@ -101,7 +101,7 @@ public class FileServiceImpl implements FileService {
      */
     public void processPowUpload(byte[] payload, String userId, String originalFileName) {
         if (payload == null || payload.length < 60) {
-            throw new BusinessException(StatusEnum.BAD_REQUEST.getCode(), "POW数据格式不正确");
+            throw new BusinessException(StatusEnum.BAD_REQUEST, "POW数据格式不正确");
         }
 
         byte[] ivBytes = Arrays.copyOfRange(payload, 0, 12);
@@ -110,17 +110,17 @@ public class FileServiceImpl implements FileService {
         byte[] cipherBytes = Arrays.copyOfRange(payload, 60, payload.length);
 
         if (cipherBytes.length == 0) {
-            throw new BusinessException(StatusEnum.BAD_REQUEST.getCode(), "密文内容不能为空");
+            throw new BusinessException(StatusEnum.BAD_REQUEST, "密文内容不能为空");
         }
 
         String fileHashBase64 = Base64.getEncoder().encodeToString(hashBytes);
         String redisKey = String.format("pow:pending:%s:%s", userId, fileHashBase64);
         PowSession session = redisService.get(redisKey, PowSession.class);
         if (session == null) {
-            throw new BusinessException(StatusEnum.BAD_REQUEST.getCode(), "未找到待验证的POW任务");
+            throw new BusinessException(StatusEnum.BAD_REQUEST, "未找到待验证的POW任务");
         }
         if (!fileHashBase64.equals(session.getHashBase64())) {
-            throw new BusinessException(StatusEnum.BAD_REQUEST.getCode(), "POW数据与初始化信息不一致");
+            throw new BusinessException(StatusEnum.BAD_REQUEST, "POW数据与初始化信息不一致");
         }
 
         String ivBase64 = Base64.getEncoder().encodeToString(ivBytes);
@@ -138,15 +138,15 @@ public class FileServiceImpl implements FileService {
         }
 
         if (existing == null) {
-            throw new BusinessException(StatusEnum.BAD_REQUEST.getCode(), "文件记录不存在，无法验证POW");
+            throw new BusinessException(StatusEnum.BAD_REQUEST, "文件记录不存在，无法验证POW");
         }
 
         if (!Objects.equals(existing.getIv(), ivBase64) || !Objects.equals(existing.getTag(), tagBase64)) {
-            throw new BusinessException(StatusEnum.BAD_REQUEST.getCode(), "IV或TAG与记录不符，POW验证失败");
+            throw new BusinessException(StatusEnum.BAD_REQUEST, "IV或TAG与记录不符，POW验证失败");
         }
 
         if (!Objects.equals(existing.getMac(), macBase64)) {
-            throw new BusinessException(StatusEnum.BAD_REQUEST.getCode(), "密文校验失败，POW验证失败");
+            throw new BusinessException(StatusEnum.BAD_REQUEST, "密文校验失败，POW验证失败");
         }
 
         fileOwnershipService.addOwnership(existing.getId(), fileHashBase64, userId);
@@ -164,21 +164,21 @@ public class FileServiceImpl implements FileService {
     @Override
     public FileDownloadResponse getFileDownloadInfo(String userId, String fileId) {
         if (userId == null || userId.isBlank()) {
-            throw new BusinessException(StatusEnum.UNAUTHORIZED.getCode(), "请先登录");
+            throw new BusinessException(StatusEnum.UNAUTHORIZED, "请先登录");
         }
         if (fileId == null || fileId.isBlank()) {
-            throw new BusinessException(StatusEnum.BAD_REQUEST.getCode(), "文件ID不能为空");
+            throw new BusinessException(StatusEnum.BAD_REQUEST, "文件ID不能为空");
         }
         File file = findById(fileId);
         if (file == null) {
-            throw new BusinessException(StatusEnum.FILE_NOT_FOUND.getCode(), "文件不存在或已被删除");
+            throw new BusinessException(StatusEnum.FILE_NOT_FOUND, "文件不存在或已被删除");
         }
         boolean owns = fileOwnershipService.userOwnsFile(fileId, userId);
         if (!owns) {
-            throw new BusinessException(StatusEnum.ACCESS_DENIED.getCode(), "无权下载该文件");
+            throw new BusinessException(StatusEnum.ACCESS_DENIED, "无权下载该文件");
         }
         if (file.getFileUrl() == null || file.getFileUrl().isBlank()) {
-            throw new BusinessException(StatusEnum.FILE_DOWNLOAD_FAILED.getCode(), "文件存储信息缺失，无法下载");
+            throw new BusinessException(StatusEnum.FILE_DOWNLOAD_FAILED, "文件存储信息缺失，无法下载");
         }
         return new FileDownloadResponse(
             file.getIv(),
@@ -191,20 +191,20 @@ public class FileServiceImpl implements FileService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteFile(String userId, String fileId) {
         if (userId == null || userId.isBlank()) {
-            throw new BusinessException(StatusEnum.UNAUTHORIZED.getCode(), "请先登录");
+            throw new BusinessException(StatusEnum.UNAUTHORIZED, "请先登录");
         }
         if (fileId == null || fileId.isBlank()) {
-            throw new BusinessException(StatusEnum.BAD_REQUEST.getCode(), "文件ID不能为空");
+            throw new BusinessException(StatusEnum.BAD_REQUEST, "文件ID不能为空");
         }
 
         File file = findById(fileId);
         if (file == null) {
-            throw new BusinessException(StatusEnum.FILE_NOT_FOUND.getCode(), "文件不存在");
+            throw new BusinessException(StatusEnum.FILE_NOT_FOUND, "文件不存在");
         }
 
         boolean owns = fileOwnershipService.userOwnsFile(fileId, userId);
         if (!owns) {
-            throw new BusinessException(StatusEnum.ACCESS_DENIED.getCode(), "无权删除该文件");
+            throw new BusinessException(StatusEnum.ACCESS_DENIED, "无权删除该文件");
         }
 
         fileOwnershipService.removeOwnership(fileId, userId);
@@ -268,7 +268,7 @@ public class FileServiceImpl implements FileService {
             byte[] hash = digest.digest();
             return Base64.getEncoder().encodeToString(hash);
         } catch (Exception e) {
-            throw new BusinessException(StatusEnum.INTERNAL_SERVER_ERROR.getCode(), "计算MAC失败");
+            throw new BusinessException(StatusEnum.INTERNAL_SERVER_ERROR, "计算MAC失败");
         }
     }
 }
